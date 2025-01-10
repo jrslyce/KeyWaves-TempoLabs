@@ -1,11 +1,12 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, Trophy, Clock } from "lucide-react";
+import { Users, Trophy, Clock, Tag, Tags } from "lucide-react";
 
 interface CampaignDetailsProps {
+  gameTags?: string[];
+  creatorTags?: string[];
   gameDescription?: string;
   requirements?: string[];
   eligibilityCriteria?: {
@@ -16,6 +17,8 @@ interface CampaignDetailsProps {
 }
 
 const CampaignDetails = ({
+  gameTags = [],
+  creatorTags = [],
   gameDescription = "Experience an epic adventure in this groundbreaking open-world RPG. Forge your path through a richly detailed universe where your choices shape the story. Features stunning graphics, dynamic combat, and an immersive storyline that will keep you engaged for hours.",
   requirements = [
     "Create at least one video review of the game",
@@ -32,6 +35,38 @@ const CampaignDetails = ({
   return (
     <div className="w-full max-w-[1000px] bg-background p-6 rounded-lg space-y-8">
       <Card className="p-6">
+        {gameTags.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Tag className="h-4 w-4 text-primary" />
+              <h3 className="text-lg font-semibold">Game Tags</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {gameTags.map((tag) => (
+                <Badge key={tag} variant="secondary">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {creatorTags.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Tags className="h-4 w-4 text-primary" />
+              <h3 className="text-lg font-semibold">Creator Tags</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {creatorTags.map((tag) => (
+                <Badge key={tag} variant="outline">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
         <h2 className="text-2xl font-bold mb-4">Game Description</h2>
         <p className="text-muted-foreground leading-relaxed">
           {gameDescription}
@@ -40,7 +75,7 @@ const CampaignDetails = ({
 
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users className="h-5 w-5" />
+          <Users className="h-5 w-5 text-primary" />
           <h2 className="text-2xl font-bold">Creator Requirements</h2>
         </div>
         <ScrollArea className="h-[200px] w-full rounded-md border p-4">
@@ -57,7 +92,7 @@ const CampaignDetails = ({
 
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-6">
-          <Trophy className="h-5 w-5" />
+          <Trophy className="h-5 w-5 text-primary" />
           <h2 className="text-2xl font-bold">Eligibility Criteria</h2>
         </div>
 

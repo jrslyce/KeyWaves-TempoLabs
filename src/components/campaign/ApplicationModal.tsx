@@ -1,4 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import {
   Dialog,
   DialogContent,
@@ -20,20 +23,51 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Badge } from "../ui/badge";
 import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "../ui/use-toast";
+import { handleApiError } from "@/lib/error-handling";
+import { Alert, AlertDescription } from "../ui/alert";
+
+const applicationSchema = z.object({
+  channelName: z.string().min(2, "Channel name must be at least 2 characters"),
+  platformLinks: z.string().url("Must be a valid URL"),
+  audienceSize: z.string().transform((val) => parseInt(val, 10)),
+  proposal: z
+    .string()
+    .min(50, "Please provide a detailed proposal (min 50 characters)"),
+});
+
+type ApplicationFormData = z.infer<typeof applicationSchema>;
 
 interface ApplicationModalProps {
-  isOpen?: boolean;
-  onClose?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   status?: "pending" | "approved" | "rejected";
   campaignTitle?: string;
+  campaignId?: string;
 }
 
 const ApplicationModal = ({
-  isOpen = true,
-  onClose = () => {},
+  open = true,
+  onOpenChange = () => {},
   status = "pending",
   campaignTitle = "Sample Game Campaign",
+  campaignId,
 }: ApplicationModalProps) => {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const form = useForm<ApplicationFormData>({
+    resolver: zodResolver(applicationSchema),
+    defaultValues: {
+      channelName: "",
+      platformLinks: "",
+      audienceSize: "",
+      proposal: "",
+    },
+  });
+
   const statusConfig = {
     pending: {
       color: "bg-yellow-500",
@@ -54,8 +88,43 @@ const ApplicationModal = ({
 
   const StatusIcon = statusConfig[status].icon;
 
+  const onSubmit = async (data: ApplicationFormData) => {
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      await handleApiError(
+        supabase.from("applications").insert({
+          campaign_id: campaignId,
+          channel_name: data.channelName,
+          platform_links: [data.platformLinks],
+          audience_size: data.audienceSize,
+          proposal: data.proposal,
+          status: "pending",
+        }),
+        "Failed to submit application",
+      );
+
+      toast({
+        title: "Application Submitted",
+        description: "Your application has been submitted successfully.",
+      });
+
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+      toast({
+        title: "Error",
+        description: "Failed to submit application. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-gray-900 text-white max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">
@@ -65,6 +134,12 @@ const ApplicationModal = ({
             Apply for {campaignTitle}
           </DialogDescription>
         </DialogHeader>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         <div className="flex items-center gap-2 my-4">
           <Badge
@@ -76,18 +151,19 @@ const ApplicationModal = ({
           </Badge>
         </div>
 
-        <Form>
-          <div className="space-y-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
+              control={form.control}
               name="channelName"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Channel Name</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Enter your channel name"
                       className="bg-gray-800"
-                      defaultValue="Sample Channel"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -96,15 +172,16 @@ const ApplicationModal = ({
             />
 
             <FormField
+              control={form.control}
               name="platformLinks"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Platform Links</FormLabel>
+                  <FormLabel>Platform Link</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="YouTube, Twitch, or other platform links"
+                      placeholder="Your main platform URL (YouTube, Twitch, etc.)"
                       className="bg-gray-800"
-                      defaultValue="https://youtube.com/sample"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -113,8 +190,9 @@ const ApplicationModal = ({
             />
 
             <FormField
+              control={form.control}
               name="audienceSize"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Audience Size</FormLabel>
                   <FormControl>
@@ -122,7 +200,7 @@ const ApplicationModal = ({
                       type="number"
                       placeholder="Enter your total followers/subscribers"
                       className="bg-gray-800"
-                      defaultValue="1000"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -131,36 +209,44 @@ const ApplicationModal = ({
             />
 
             <FormField
+              control={form.control}
               name="proposal"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Content Proposal</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Describe how you plan to cover this game"
                       className="bg-gray-800 min-h-[100px]"
-                      defaultValue="I plan to create an in-depth review and gameplay series..."
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
-        </Form>
 
-        <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={onClose} className="mr-2">
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700"
-            disabled={status !== "pending"}
-          >
-            Submit Application
-          </Button>
-        </DialogFooter>
+            <DialogFooter className="mt-6">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                type="button"
+                className="mr-2"
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-blue-600 hover:bg-blue-700"
+                disabled={status !== "pending" || isSubmitting}
+                loading={isSubmitting}
+              >
+                Submit Application
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

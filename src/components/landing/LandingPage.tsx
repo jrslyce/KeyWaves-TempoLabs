@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Star } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,7 @@ const LandingPage = () => {
             <div className="flex items-center gap-4">
               <Button variant="ghost">Login</Button>
               <Button>Join Now</Button>
+              <ThemeToggle />
             </div>
           </div>
         </div>
